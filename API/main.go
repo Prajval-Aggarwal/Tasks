@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"strings"
 )
 
 // constants
@@ -19,12 +20,9 @@ type WData struct {
 	} `json:"main"`
 }
 
-type ABC struct {
-	Val []string `json:"cities"`
-}
 type ResData struct {
-	ActualTemperature float64  `json:"actual_temperature"`
-	DiffTemperatures  []string `json:"diff_temperatures"`
+	ActualTemperature float64 `json:"temperature"`
+	Message           string  `json:"message"`
 }
 
 // Methods
@@ -38,19 +36,11 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 	//Getting data from params....
 	params := r.URL.Query()
 	var cities []string
-
+	fmt.Println("paspsda", params)
 	for _, city := range params {
 		cities = append(cities, city[0])
 	}
 	fmt.Println(cities)
-
-	// body, _ := ioutil.ReadAll(r.Body)
-
-	// var cities ABC
-	// err := json.Unmarshal(body, &cities)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
 
 	//	cities := []string{"amritsar", "delhi", "chennai", "london"}
 	temperature := make(map[string]float64)
@@ -79,8 +69,7 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 
 	//Calculting diff of each pair of temperatures
 	for i := range cities {
-		var diffTemperatures []string
-
+		var temp string
 		for j := 0; j < len(cities); j++ {
 			if i == j {
 				continue
@@ -88,15 +77,16 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 			diff := temperature[cities[i]] - temperature[cities[j]]
 			var key string
 			if diff < 0 {
-				key = fmt.Sprintf("%s is %v K colder than %s", cities[i], roundFloat(diff, 2), cities[j])
+				key = fmt.Sprintf("%s is %vK colder than %s", cities[i], roundFloat(diff, 2), cities[j])
 			} else {
-				key = fmt.Sprintf("%s is  %v K hoter than %s", cities[i], roundFloat(diff, 2), cities[j])
+				key = fmt.Sprintf("%s is  %vK  hoter than %s", cities[i], roundFloat(diff, 2), cities[j])
 			}
-			diffTemperatures = append(diffTemperatures, key)
+
+			temp = temp + key + ", "
 		}
-		FData[cities[i]] = ResData{
+		FData[strings.Title(cities[i])] = ResData{
 			ActualTemperature: temperature[cities[i]],
-			DiffTemperatures:  diffTemperatures,
+			Message:           temp,
 		}
 	}
 
