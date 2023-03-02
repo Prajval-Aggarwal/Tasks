@@ -7,7 +7,6 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"sort"
 )
 
 // constants
@@ -24,9 +23,8 @@ type ABC struct {
 	Val []string `json:"cities"`
 }
 type ResData struct {
-	City              string             `json:"city"`
-	ActualTemperature float64            `json:"actual_temperature"`
-	DiffTemperatures  map[string]float64 `json:"diff_temperatures"`
+	ActualTemperature float64  `json:"actual_temperature"`
+	DiffTemperatures  []string `json:"diff_temperatures"`
 }
 
 // Methods
@@ -37,22 +35,30 @@ func roundFloat(val float64, precision uint) float64 {
 
 func ApiHandler(w http.ResponseWriter, r *http.Request) {
 
-	body, _ := ioutil.ReadAll(r.Body)
-	// fmt.Println("body is:", string(body))
-	var cities ABC
-	err := json.Unmarshal(body, &cities)
-	if err != nil {
-		fmt.Println(err)
-	}
+	//Getting data from params....
+	params := r.URL.Query()
+	var cities []string
 
-	//fmt.Println("cities is:", cities.Val)
+	for _, city := range params {
+		cities = append(cities, city[0])
+	}
+	fmt.Println(cities)
+
+	// body, _ := ioutil.ReadAll(r.Body)
+
+	// var cities ABC
+	// err := json.Unmarshal(body, &cities)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 
 	//	cities := []string{"amritsar", "delhi", "chennai", "london"}
 	temperature := make(map[string]float64)
 
-	var resData []ResData
+	FData := make(map[string]ResData)
 
-	for _, city := range cities.Val {
+	//Api calls based on cities....
+	for _, city := range cities {
 		fmt.Println("City name is: ", city)
 		apiUrl := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=%s&appid=%s", city, apiKey)
 		res, err := http.Get(apiUrl)
@@ -71,33 +77,31 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Temperature is: ", temperature)
 
-	for i := range cities.Val {
-		diffTemperatures := make(map[string]float64)
+	//Calculting diff of each pair of temperatures
+	for i := range cities {
+		var diffTemperatures []string
 
-		for j := 0; j < len(cities.Val); j++ {
+		for j := 0; j < len(cities); j++ {
 			if i == j {
 				continue
 			}
-			diff := temperature[cities.Val[i]] - temperature[cities.Val[j]]
-			//fmt.Printf("Temperature difference between %s and %s is: %.2f\n", cities.Val[i], cities.Val[j], diff)
-			key := fmt.Sprintf("%s-%s", cities.Val[i], cities.Val[j])
-			//	fmt.Println("Difference is: ", diff)
-			diffTemperatures[key] = roundFloat(diff, 2)
+			diff := temperature[cities[i]] - temperature[cities[j]]
+			var key string
+			if diff < 0 {
+				key = fmt.Sprintf("%s is %v K colder than %s", cities[i], roundFloat(diff, 2), cities[j])
+			} else {
+				key = fmt.Sprintf("%s is  %v K hoter than %s", cities[i], roundFloat(diff, 2), cities[j])
+			}
+			diffTemperatures = append(diffTemperatures, key)
 		}
-		resData = append(resData, ResData{
-			City:              cities.Val[i],
-			ActualTemperature: temperature[cities.Val[i]],
+		FData[cities[i]] = ResData{
+			ActualTemperature: temperature[cities[i]],
 			DiffTemperatures:  diffTemperatures,
-		})
+		}
 	}
 
-	//sorting done here
-	sort.Slice(resData, func(i, j int) bool {
-		return resData[i].ActualTemperature > resData[j].ActualTemperature
-	})
-
 	//converting to json Format
-	resJSON, err := json.Marshal(resData)
+	resJSON, err := json.Marshal(FData)
 	if err != nil {
 		http.Error(w, "error encoding response as JSON", http.StatusInternalServerError)
 		return
