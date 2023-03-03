@@ -203,7 +203,7 @@ func EndMemberShipHandler(w http.ResponseWriter, r *http.Request) {
 			memberList = append(memberList, member)
 
 			// Write the member information and exit information to the response as JSON
-			json.NewEncoder(w).Encode(member)
+			//json.NewEncoder(w).Encode(member)
 			json.NewEncoder(w).Encode(res)
 
 			return

@@ -1,5 +1,7 @@
 package mod
 
+import 																	
+
 //import "github.com/golang-jwt/jwt/v4"
 
 type Members struct {
@@ -22,7 +24,7 @@ type Exit struct {
 	Refund   float64 `json:"refund"`
 }
 
-// type Claims struct {
-// 	Username string `json:"username"`
-// 	jwt.RegisteredClaims
-// }
+type Claims struct {
+	Username string `json:"username"`
+	jwt.RegisteredClaims
+}
