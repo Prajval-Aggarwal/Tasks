@@ -7,10 +7,12 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 )
 
+var jwtKey = []byte("secret_key")
 var memType = map[string]float64{
 	"Silver": 2000,
 	"Gold":   1000,
@@ -29,14 +31,14 @@ var memberList = []mod.Members{
 		Duration:     6,
 	},
 	{
-		StartDate:    "27 Feb 2023",
+		StartDate:    "01 Feb 2023",
 		ID:           2,
 		Name:         "Johny",
 		MemberShip:   "Gold",
-		TotalPrice:   6000,
+		TotalPrice:   5500,
 		EndDate:      "27 Aug 2023",
 		MonthlyPrice: 1000,
-		Duration:     6,
+		Duration:     5.5,
 	},
 }
 
@@ -79,7 +81,7 @@ func EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	//member.Balance = member.MoneySubmitted - member.TotalPrice
 
 	// Set the end date of the membership based on the duration and current date.
-	member.EndDate = dateStr.AddDate(0, 0, member.Duration*30).Format("02 Jan 2006")
+	member.EndDate = dateStr.AddDate(0, 0, int(member.Duration*30)).Format("02 Jan 2006")
 	fmt.Println("member is", member)
 
 	// Add the new member to the member list.
@@ -97,19 +99,26 @@ func EnrollHandler(w http.ResponseWriter, r *http.Request) {
 // MemberHandler gives the list of members present in a gym
 func MemberHandler(w http.ResponseWriter, r *http.Request) {
 
+	//sorting memberList based on their ID's
+	sort.Slice(memberList, func(i, j int) bool {
+		return memberList[i].ID < memberList[j].ID
+	})
 	//coverting the memberList to json and printing it out
 	resJSON, err := json.Marshal(memberList)
 	if err != nil {
 		panic(err)
 	}
 	w.Write(resJSON)
+
 }
 
 // PriceGetHandler prints out the currents price of type of memberhip present in a gym
 func PriceGetHandler(w http.ResponseWriter, r *http.Request) {
+
 	data, err := json.Marshal(memType)
 	if err != nil {
-		panic(err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
 	w.Write([]byte(data))
 
@@ -153,7 +162,10 @@ func EndMemberShipHandler(w http.ResponseWriter, r *http.Request) {
 
 	//Loop through the member list to find the given member id
 	for i, member := range memberList {
-		id, _ := strconv.Atoi(params)
+		id, err := strconv.Atoi(params)
+		if err != nil {
+			log.Fatal(err)
+		}
 		//check if the id matches with the current member id
 		if id == member.ID {
 
@@ -162,22 +174,27 @@ func EndMemberShipHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Fatal(err)
 			}
-			duration := float64(now.Sub(startDate).Hours() / 24)
+			temp := now.Sub(startDate).Hours() / 24
+			duration := float64(temp)
 			fmt.Println("Duration is", duration)
+			if duration < 30 {
+				http.Error(w, "Cannot end membership before one month", http.StatusBadRequest)
+				return
 
+			}
 			//calculate the monbey to refund to the member
 			oneDayMoney := (member.TotalPrice / (float64(member.Duration) * 30))
 			MoneyRefund := math.Round((member.TotalPrice - (duration * oneDayMoney)) / 2)
 
 			//Update members information
-			member.Duration = int(duration)
-			member.EndDate = time.Now().AddDate(0, 0, int(duration)).Format("2006-01-02")
-
+			member.Duration = temp / 30
+			member.EndDate = time.Now().AddDate(0, 0, int(duration)).Format("02 Jan 2006")
+			member.TotalPrice -= MoneyRefund
 			member.IsDelete = true
 
 			// Create the exit information to be returned in the response
 			res := mod.Exit{
-				Duration: duration,
+				Duration: temp / 30,
 				Refund:   MoneyRefund,
 			}
 
@@ -192,4 +209,6 @@ func EndMemberShipHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	http.Error(w, "No member with the given ID was found", http.StatusNotFound)
+
 }

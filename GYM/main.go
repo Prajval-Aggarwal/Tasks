@@ -15,7 +15,6 @@ func main() {
 	mux.HandleFunc("/PriceGet", cont.PriceGetHandler)
 	mux.HandleFunc("/PriceUpdate", cont.PriceUpdateHandler)
 	mux.HandleFunc("/end-memberShip", cont.EndMemberShipHandler)
-
 	log.Fatal(http.ListenAndServe(":8080", mux))
 
 }
