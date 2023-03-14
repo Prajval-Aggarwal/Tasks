@@ -15,7 +15,7 @@ import (
 
 var DB *gorm.DB
 
-func init() {
+func Connect() {
 	fmt.Println("Connecting to database...")
 
 	dsn := "host=localhost port=5432 user=postgres password=Test@123 dbname=gym sslmode=disable"
@@ -31,6 +31,7 @@ func init() {
 
 // EnrollHandler handles the request for enrolling new members.
 func EnrollHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var member mod.Member
 
 	err := json.NewDecoder(r.Body).Decode(&member)
@@ -66,7 +67,7 @@ func EnrollHandler(w http.ResponseWriter, r *http.Request) {
 
 // MemberHandler gives the list of members present in a gym
 func MemberHandler(w http.ResponseWriter, r *http.Request) {
-
+	w.Header().Set("Content-Type", "application/json")
 	members := &[]mod.Member{}
 	DB.Unscoped().Find(members)
 	resJSON, err := json.Marshal(members)
@@ -78,7 +79,7 @@ func MemberHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func PriceGetHandler(w http.ResponseWriter, r *http.Request) {
-
+	w.Header().Set("Content-Type", "application/json")
 	var memberhips []mod.MemberShip
 	DB.Find(&memberhips)
 
@@ -87,8 +88,8 @@ func PriceGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PriceUpdateHandler handle the request to update the price of type of membership of a gym
-func PriceUpdateHandler(w http.ResponseWriter, r *http.Request) {
-
+func PriceUpdate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var memShip mod.MemberShip
 	//Taking input from body
 	err := json.NewDecoder(r.Body).Decode(&memShip)
@@ -105,7 +106,7 @@ func PriceUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 // EndMemberHandler hadles the request to end membership for a given member
 func EndMemberShipHandler(w http.ResponseWriter, r *http.Request) {
-
+	w.Header().Set("Content-Type", "application/json")
 	//get the member id from the query parameters
 	id := r.URL.Query().Get("id")
 
@@ -139,6 +140,7 @@ func EndMemberShipHandler(w http.ResponseWriter, r *http.Request) {
 			member.Duration = temp / 30
 			member.EndDate = time.Now().AddDate(0, 0, int(duration)).Format("02 Jan 2006")
 			member.TotalPrice -= MoneyRefund
+
 			DB.Where("member_id=?", id).Updates(&member)
 			DB.Where("member_id=?", id).Delete(&mod.Member{})
 			w.Write([]byte("User Deleted Succesfully"))
